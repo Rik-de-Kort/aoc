@@ -1,0 +1,5 @@
+with open('input') as handle:
+    data = [int(line) for line in handle.read()]
+
+print(sum(first > second for first, section in (data[:-1], data[1:]))
+
