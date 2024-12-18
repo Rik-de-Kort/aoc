@@ -1,5 +1,5 @@
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 folder = Path(__file__).parent
@@ -16,11 +16,11 @@ with open(folder / 'input.txt') as handle:
 
 @dataclass(slots=True)
 class State:
-    p: int
     A: int
     B: int
     C: int
-    output: list[int]
+    p: int = 0
+    output: list[int] = field(default_factory=list)
 
 
 def get_combo_value(combo: int, state: State):
@@ -37,7 +37,7 @@ def get_combo_value(combo: int, state: State):
 
 def exec_instr(instr: int, combo: int, state: State) -> State:
     if instr == 0:  # Adv
-        state.A = state.A // (2**get_combo_value(combo, state))
+        state.A = state.A // (2 ** get_combo_value(combo, state))
         state.p += 2
     elif instr == 1:  # bxl
         state.B = state.B ^ combo
@@ -57,26 +57,43 @@ def exec_instr(instr: int, combo: int, state: State) -> State:
         state.output.append(get_combo_value(combo, state) % 8)
         state.p += 2
     elif instr == 6:  # bdv
-        state.B = state.A // (2**get_combo_value(combo, state))
+        state.B = state.A // (2 ** get_combo_value(combo, state))
         state.p += 2
     elif instr == 7:  # cdv
-        state.C = state.A // (2**get_combo_value(combo, state))
+        state.C = state.A // (2 ** get_combo_value(combo, state))
         state.p += 2
     return state
 
 
-state = State(
-    p=0,
-    A=a,
-    B=b,
-    C=c,
-    output=[]
-)
-# print(state)
-while state.p+1 < len(instrs):
-    # print(state.p)
-    instr, combo = instrs[state.p], instrs[state.p+1]
-    # print(instr, combo)
-    state = exec_instr(instr, combo, state)
+def run_program(instrs, state):
+    while state.p + 1 < len(instrs):
+        instr, combo = instrs[state.p], instrs[state.p + 1]
+        state = exec_instr(instr, combo, state)
+    return state
 
-print(','.join(str(x) for x in state.output))
+
+print(','.join(str(x) for x in run_program(instrs, State(A=a, B=b, C=c)).output))
+
+
+def is_postfix(left, right):
+    return len(left) <= len(right) and all(x == y for x, y in zip(left, right[-len(left):]))
+
+
+for a in range(1, 100):
+    before = run_program(instrs, State(A=a, B=0, C=0)).output
+    for k in range(8):
+        after = run_program(instrs, State(A=8 * a + k, B=0, C=0)).output
+        assert is_postfix(before, after), (a, k, before, after)
+
+candidates = [0]
+for i, target in enumerate(reversed(instrs)):
+    new_candidates = []
+    for c in candidates:
+        for k in range(8):
+            candidate = 8 * c + k
+            out = run_program(instrs, State(A=candidate, B=0, C=0)).output
+            if out[-(i + 1)] == target:
+                new_candidates.append(candidate)
+    assert new_candidates
+    candidates = new_candidates
+print(min(candidates))
